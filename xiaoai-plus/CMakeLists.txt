@@ -150,6 +150,7 @@ add_library(xiaoai_plus_core
   src/audio/player_aplay.cpp
   src/config/config.cpp
   src/audio/aec_webrtc.cpp
+  src/audio/subband_aec.cpp
   src/audio/shadow_voice.cpp
   src/audio/shadow_webrtc.cpp
   src/audio/ordinary_barge_capture.cpp

@@ -87,6 +87,9 @@ struct ConversationPreset {
   int smart_turn_complete_ms{1500}, smart_turn_open_ms{4500};
   int absolute_timeout_seconds{0};  // 0: no absolute session limit
   std::string duplex_mode{"half"};
+  // full duplex without the identity Service: "apm" (WebRTC APM + uplink attenuation) or
+  // "subband" (linear canceller on mic ch0 vs loopback ch3, talker kept at full level).
+  std::string echo_canceller{"apm"};
   uint64_t daily_token_limit{0};  // 0: no limit; usage is still recorded
   std::string usage_dir{"/data/xiaoai-plus/usage"};
   bool ordinary_barge_in{false};

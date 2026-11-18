@@ -242,6 +242,9 @@ void Config::validate(bool memory_only) const {
   if (conversation.duplex_mode != "half" && conversation.duplex_mode != "full") {
     throw std::runtime_error("conversation.duplex_mode must be half or full");
   }
+  if (conversation.echo_canceller != "apm" && conversation.echo_canceller != "subband") {
+    throw std::runtime_error("conversation.echo_canceller must be apm or subband");
+  }
   if(conversation.barge_processing_io_delay_hint_ms<0 ||
      conversation.barge_processing_io_delay_hint_ms>500)
     throw std::runtime_error("conversation.barge_processing_io_delay_hint_ms must be 0..500");
@@ -364,6 +367,7 @@ Config load(const std::string& path, bool memory_only) {
         else throw std::runtime_error("conversation.ordinary_barge_in must be on or off");
       }
       SetIfPresent(kv, "duplex_mode", &cfg.conversation.duplex_mode);
+      SetIfPresent(kv, "echo_canceller", &cfg.conversation.echo_canceller);
       if (auto limit = kv.find("daily_token_limit"); limit != kv.end()) {
         if (limit->second.empty() ||
             !std::all_of(limit->second.begin(), limit->second.end(),

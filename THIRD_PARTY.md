@@ -5,6 +5,7 @@
 | --- | --- |
 | kslr/xiaoai-plus | [MIT](https://github.com/kslr/xiaoai-plus/blob/main/LICENSE)，`xiaoai-plus/LICENSE` 原样保留 |
 | idootop/open-xiaoai | [MIT](https://github.com/idootop/open-xiaoai/blob/main/LICENSE)，研究参考 |
+| OwnDing/open-xiaoai | [MIT](https://github.com/OwnDing/open-xiaoai/blob/main/LICENSE)，`xiaoai-plus/src/audio/subband_aec.*` 移植自其 `examples/xiaozhi/xiaozhi/services/audio/aec.py` |
 | sherpa-onnx | [Apache-2.0](https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE)，v1.12.25，构建时下载 |
 | KWS 权重、tokens、en.phone | [官方模型下载](https://k2-fsa.github.io/sherpa/onnx/kws/pretrained_models/index.html)；权重独立再分发许可未确认，不入仓库，使用者自行下载并核实许可；不能把代码 Apache 许可直接等同于权重许可 |
 | nlohmann/json | [MIT](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)，v3.11.3 |

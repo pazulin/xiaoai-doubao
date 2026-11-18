@@ -38,6 +38,9 @@ smart_turn_complete_ms = 1500
 smart_turn_open_ms = 4500
 absolute_timeout_seconds = 0
 duplex_mode = half
+# 仅 duplex_mode = full 且不开记忆后台时生效。subband：用 ch3 回采减掉音箱自己的声音，
+# 不压人声，豆包说话时也能直接插话打断（配合 protocol = v3）。apm：原来的处理。
+echo_canceller = apm
 # 0 disables the local guard while keeping usage records.
 daily_token_limit = 0
 

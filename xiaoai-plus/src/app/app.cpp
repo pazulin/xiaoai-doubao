@@ -259,6 +259,9 @@ App::App(config::Config cfg, bool kws_only, bool trial_once, bool kws_diagnostic
 
   // NS/AGC/AEC run on mono audio for uplink audio processing.
   aec_ = std::make_unique<dsp::AecWebrtc>(cfg_.audio.sample_rate, 1);
+  if (cfg_.conversation.duplex_mode == "full" && cfg_.conversation.echo_canceller == "subband" &&
+      !cfg_.conversation.ordinary_barge_in && cfg_.audio.channels >= 4)
+    full_aec_ = std::make_unique<audio::SubbandAec>();
 
   wakeup::Hooks hooks;
   if(cfg_.conversation.ordinary_barge_in)
@@ -299,7 +302,9 @@ App::App(config::Config cfg, bool kws_only, bool trial_once, bool kws_diagnostic
   kws_cfg.bit_depth = 16;  // KWS receives S16 after ConvertS32ToS16
   kws_cfg.min_trigger_interval_ms = kMinTriggerIntervalMs;
   kws_cfg.exit_playback_threshold = cfg_.wakeup.exit_playback_threshold;
-  kws_cfg.allow_playback_interrupt = cfg_.conversation.duplex_mode == "half";
+  // Full duplex with the subband canceller: a wake word during playback still interrupts,
+  // as a fallback when residual echo hides the user's voice from the provider.
+  kws_cfg.allow_playback_interrupt = cfg_.conversation.duplex_mode == "half" || full_aec_;
   kws_cfg.ai_text_contains = [this](const std::string& label) { return exit_echo_guard_.Contains(label); };
   kws_cfg.on_end = [this]() {
     kLog->info("local KWS requested conversation exit");
@@ -1228,7 +1233,7 @@ void App::OnInputAudio(const std::vector<uint8_t>& chunk) {
   if (!reverse_ref_buf_.empty()) {
     echo_stats = AnalyzeEcho(capture_mono_buf_, reverse_ref_buf_);
   }
-  if (!barge_capture_ && aec_ && !reverse_ref_buf_.empty()) {
+  if (!barge_capture_ && !full_aec_ && aec_ && !reverse_ref_buf_.empty()) {
     aec_->AnalyzeReverseStream(reverse_ref_buf_.data(), reverse_ref_buf_.size());
   }
   if(barge_capture_) {
@@ -1259,6 +1264,10 @@ void App::OnInputAudio(const std::vector<uint8_t>& chunk) {
 
     const std::vector<uint8_t>* api_audio = barge_capture_ ? &barge_cleaned_buf_ : &capture_mono_buf_;
     std::vector<uint8_t> owned_audio;
+    if (full_aec_ && !barge_capture_ && reverse_ref_buf_.size() == capture_mono_buf_.size()) {
+      CancelEchoForFullDuplex(ai_speaking, &owned_audio);
+      api_audio = &owned_audio;
+    } else {
     if (!barge_capture_ && aec_) {
       auto processed = aec_->ProcessCaptureStream(capture_mono_buf_.data(), capture_mono_buf_.size());
       if (!processed.empty()) {
@@ -1278,6 +1287,7 @@ void App::OnInputAudio(const std::vector<uint8_t>& chunk) {
         ScalePcmS16InPlace(&owned_audio, gain);
       }
     }
+    }
 
     RecordUplinkLevel(*api_audio);
     if (api_audio == &owned_audio) {
@@ -1286,6 +1296,30 @@ void App::OnInputAudio(const std::vector<uint8_t>& chunk) {
       client_->EnqueueAudio(*api_audio);
     }
     CheckSmartTurn();
+  }
+}
+
+void App::CancelEchoForFullDuplex(bool ai_speaking, std::vector<uint8_t>* out) {
+  // Subtract the loopback (ch3) from mic ch0 and keep the talker at full level, so the
+  // provider can decide whether overlapping speech interrupts. x4 (+12 dB) matches the
+  // mic >>14 scaling of the reference OH2P implementation; raw ch0 >>16 is quiet.
+  constexpr float kUplinkGain = 4.0f;
+  const size_t n = capture_mono_buf_.size() / sizeof(int16_t);
+  const auto cleaned = full_aec_->Process(reinterpret_cast<const int16_t*>(capture_mono_buf_.data()),
+                                          reinterpret_cast<const int16_t*>(reverse_ref_buf_.data()), n);
+  out->resize(n * sizeof(int16_t));
+  auto* dst = reinterpret_cast<int16_t*>(out->data());
+  for (size_t i = 0; i < n; ++i) {
+    dst[i] = static_cast<int16_t>(std::max(-32768.0f, std::min(32767.0f, cleaned[i] * kUplinkGain)));
+    if (ai_speaking) full_aec_sq_ += double(dst[i]) * dst[i];
+  }
+  if (!ai_speaking) return;
+  full_aec_n_ += n;
+  const auto now = std::chrono::steady_clock::now();
+  if (now - full_aec_log_ >= std::chrono::seconds(3)) {
+    kLog->info("full-duplex aec while_speaking reduction_db={:.1f} uplink_rms={:.1f}",
+               full_aec_->reduction_db(), std::sqrt(full_aec_sq_ / full_aec_n_));
+    full_aec_log_ = now; full_aec_sq_ = 0; full_aec_n_ = 0;
   }
 }
 

@@ -21,6 +21,7 @@
 #include "audio/kws_diagnostics.hpp"
 #include "config/config.hpp"
 #include "audio/aec_webrtc.hpp"
+#include "audio/subband_aec.hpp"
 #include "audio/ordinary_barge_capture.hpp"
 #include "audio/shadow_webrtc.hpp"
 #include "realtime/client.hpp"
@@ -154,6 +155,7 @@ class App {
   std::recursive_mutex transport_effect_mu_;
   void OnSmartTurn(const realtime::duplex::Event& event);
   void CheckSmartTurn();
+  void CancelEchoForFullDuplex(bool ai_speaking, std::vector<uint8_t>* out);
   bool smart_turn_active_{false}, smart_turn_sent_{false};
   std::string smart_turn_text_;
   std::vector<std::string> smart_turn_words_;
@@ -194,6 +196,10 @@ class App {
   std::atomic<bool> identity_pending_{true};
   std::deque<memory::Action> memory_actions_;
   std::unique_ptr<dsp::AecWebrtc> aec_;
+  std::unique_ptr<audio::SubbandAec> full_aec_;
+  std::chrono::steady_clock::time_point full_aec_log_{};
+  double full_aec_sq_{0};
+  size_t full_aec_n_{0};
 
   std::unique_ptr<wakeup::Gate> gate_;
   std::unique_ptr<wakeup::Trigger> trigger_;
