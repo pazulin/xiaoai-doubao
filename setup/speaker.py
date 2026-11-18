@@ -133,7 +133,7 @@ def install(a):
         size=package.stat().st_size if package.exists() else PACKAGE_SIZE
         print(precheck(a,size));return
     if not a.package:download(PACKAGE_URL,package,PACKAGE_SHA)
-    if sha(package)!=PACKAGE_SHA: raise RuntimeError('package SHA-256 mismatch')
+    if sha(package)!=(a.package_sha or PACKAGE_SHA): raise RuntimeError('package SHA-256 mismatch')
     print(precheck(a,package.stat().st_size))
     stage=content(a,package)
     stamp=datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -182,6 +182,7 @@ def entry():
     p.add_argument('--key',type=Path,default=Path('~/.ssh/xiaoai_doubao_rsa'))
     p.add_argument('--known-hosts',type=Path,default=LOCAL/'known_hosts')
     p.add_argument('--package',type=Path,help='本地v0.1.0安装包')
+    p.add_argument('--package-sha',help='自己编译的安装包的SHA-256；配合 --package 使用，不填则按发布包校验')
     p.add_argument('--child',action='append',help='孩子名字，可重复 --child Amy --child Ben')
     p.add_argument('--memory-server',help='可选记忆后台URL')
     p.add_argument('--device-secret-file',type=Path,help='可选记忆后台设备密钥文件(0600)')
