@@ -18,6 +18,10 @@ voice = zh_female_vv_jupiter_bigtts
 # RMS automatic gain applies only to local KWS; cloud uplink is unchanged.
 kws_agc = on
 say_hello = Hi! I'm Doubao. Story or riddle?
+# on：唤醒、告别、说话中被唤醒词打断时，随机播一句预先录好的豆包语音（替代“嘀”）。
+# 语音放在 /data/xiaoai-plus/phrases/{greet,bye,listen}/，用 toolchain/gen-phrases.py 生成；
+# 目录不存在就还是提示音。开了它可以把 say_hello 留空，省掉一次云端开场白。
+spoken_cues = off
 # Use a separate, tested keyword file when experimenting with a new wake word.
 keywords_file = /data/xiaoai-plus/keywords/keywords_doubao_repeat_end.txt
 s32_shift = 16

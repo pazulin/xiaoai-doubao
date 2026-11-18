@@ -332,6 +332,11 @@ Config load(const std::string& path, bool memory_only) {
         else throw std::runtime_error("wakeup.kws_agc must be on or off");
       }
       SetIfPresent(kv, "say_hello", &cfg.wakeup.say_hello);
+      if (auto s = kv.find("spoken_cues"); s != kv.end()) {
+        if (s->second != "on" && s->second != "off")
+          throw std::runtime_error("wakeup.spoken_cues must be on or off");
+        cfg.wakeup.spoken_cues = s->second == "on";
+      }
       SetIfPresent(kv, "keywords_file", &cfg.wakeup.keywords_file);
       SetIfPresent(kv, "kws_threshold", &cfg.wakeup.kws_threshold);
       if(auto threads=kv.find("kws_num_threads");threads!=kv.end()) {

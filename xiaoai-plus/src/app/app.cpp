@@ -410,7 +410,9 @@ void App::EndLocalConversation(const char* reason) {
   gate_->Disarm(reason);
 }
 void App::AfterDisarm(const std::string& reason) {
-    if(reason=="local_kws_exit" || reason=="user_exit")InterruptPlayback(audio::SessionCue::kExit);
+    if(reason=="local_kws_exit" || reason=="user_exit" ||
+       (cfg_.wakeup.spoken_cues && (reason=="timeout" || reason=="absolute_timeout")))
+      InterruptPlayback(audio::SessionCue::kExit);
     {std::lock_guard<std::mutex> lock(mu_);reply_pending_=false;}
     control_cv_.notify_one();
     memory_switching_.store(false);
@@ -1660,7 +1662,7 @@ void App::OnWakeInterrupt(const std::string&,const KwsTicket& ticket) {
     exit_after_playback_ = false;
     ResetFarewellStateLocked();
   }
-  InterruptPlayback(audio::SessionCue::kWake);
+  InterruptPlayback(audio::SessionCue::kListen);
   if(gate_)gate_->SetAiSpeaking(false);
   if (client_ && !client_->InterruptResponse()) kLog->warn("response.cancel failed after wake");
   if (memory_) {
@@ -1969,7 +1971,7 @@ void App::ControlLoop() {
       if (!native_wake_monitor_ || !native_wake_monitor_->Blocked()) {
         PauseMphelperBounded();
       }
-      if (!client_->SendSayHello()) {
+      if (!cfg_.wakeup.say_hello.empty() && !client_->SendSayHello()) {
         kLog->error("send say_hello failed");
         gate_->Disarm("say_hello_failed");
         continue;
@@ -1987,10 +1989,14 @@ void App::PlaySessionCue() {
   if(cue==audio::SessionCue::kNone)return;
   if(player_ && !stopping_.load() && (!native_wake_monitor_ || !native_wake_monitor_->Blocked())) {
     player_->Interrupt();const auto generation=player_->Generation();
-    const bool queued=player_->Play(audio::MakeSessionCue(cue,cfg_.audio.playback_gain),generation,false);
-    const bool drained=queued && player_->Drain(generation,std::chrono::milliseconds(300));
+    const bool spoken=cfg_.wakeup.spoken_cues;
+    const auto pcm=spoken ? audio::MakeSpokenCue(cue,cfg_.audio.playback_gain)
+                          : audio::MakeSessionCue(cue==audio::SessionCue::kListen?audio::SessionCue::kWake:cue,cfg_.audio.playback_gain);
+    const bool queued=player_->Play(pcm,generation,false);
+    // Spoken clips last 1-2 s; OnAudio stays fenced while cue_requested_ is set.
+    const bool drained=queued && player_->Drain(generation,std::chrono::milliseconds(spoken?4000:300));
     if(queued && !drained)(void)player_->Interrupt(generation);
-    kLog->info("local session cue={} drained={}",cue==audio::SessionCue::kWake?"wake":"exit",drained);
+    kLog->info("local session cue={} drained={}",audio::SessionCueName(cue),drained);
   }
   cue_requested_.compare_exchange_strong(cue,audio::SessionCue::kNone);
 }

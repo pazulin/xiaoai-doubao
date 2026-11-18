@@ -65,6 +65,9 @@ struct Wakeup {
   int s32_shift{16};
   int input_channel{-1};  // -1: beamformed; 0..2: one microphone
   std::string say_hello{"在"};
+  // on: wake/bye/interrupt cues play a random clip from phrases/{greet,bye,listen}/*.pcm
+  // (24 kHz mono S16LE, next to config.ini); falls back to the tone when none exist.
+  bool spoken_cues{false};
   std::string keywords_file{"assets/keywords.txt"};
   std::string tokens_path{"assets/tokens.txt"};
   std::string encoder_path{"assets/encoder.onnx"};
