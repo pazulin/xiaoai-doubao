@@ -10,7 +10,7 @@
   - `xiaoai_plus_speaker` 主程序
   - `lib/` sherpa-onnx 共享库（rpath `$ORIGIN/lib`）
   - `assets/` 唤醒模型、tokens、CA 证书
-  - `keywords/` 唤醒词和结束词
+  - `keywords/` 唤醒词（豆包豆包）和退出词（退出）
   - `config.ini` 配置（权限 600）
 
 ## 还差一步：火山引擎 API Key
